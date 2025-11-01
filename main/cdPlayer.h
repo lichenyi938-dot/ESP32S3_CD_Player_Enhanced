@@ -20,26 +20,26 @@ typedef struct {
     uint32_t trackDuration;      /* 时长（帧） */
 } cdplayer_track_info_t;
 
-/* ========= 驱动器/唱片信息（GUI 直接读） =========
-   兼容旧分支的不同字段名，增加了多个“别名字段”。*/
+/* ========= 驱动器/唱片信息 =========
+   兼容不同分支/写法，含“别名字段” */
 typedef struct {
     /* 设备字符串 */
     char vendor[16];
     char product[32];
     char revision[8];
 
-    /* 专辑信息（GUI 可能直接显示） */
+    /* 专辑信息 */
     char albumTitle[64];
     char albumPerformer[64];
 
-    /* CD-Text 可用：多种写法 */
+    /* CD-Text 可用（多种写法） */
     bool cdTextAvailable;   /* 正式字段 */
-    bool cdtextAvailable;   /* 小写 t 变体 */
+    bool cdtextAvailable;   /* 变体：小写 t */
     bool cdfextAvailable;   /* 常见误拼，做别名 */
 
-    /* 连接/介质状态（不同分支的写法都给） */
+    /* 连接/介质状态（不同分支写法都给） */
     bool isConnected;       /* 已连接 */
-    bool disConnected;      /* 反义写法（某分支用） */
+    bool disConnected;      /* 有的代码用相反语义：0 表示已连接 */
 
     bool trayClosed;        /* 托盘是否关闭 */
 
@@ -48,7 +48,7 @@ typedef struct {
 
     bool discISO;           /* 数据盘标志（常用拼法） */
     bool cdscISO;           /* 误拼别名 -> 与 discISO 同步 */
-    bool discSC;            /* 兼容保留位（不使用也无妨） */
+    bool discSC;            /* 兼容保留位 */
 
     /* 是否可以播放（两种拼写） */
     bool readyToPlay;
@@ -59,26 +59,24 @@ typedef struct {
     cdplayer_track_info_t trackList[CDPLAYER_MAX_TRACKS];
 } cdplayer_drive_info_t;
 
-/* ========= 播放状态（GUI 会直接读） ========= */
+/* ========= 播放状态 ========= */
 typedef struct {
     int  volume;                 /* 0..100 */
     bool ready;                  /* 设备就绪 */
     bool playing;                /* 播放中 */
 
-    /* 当前轨道索引/快进快退状态（GUI 会引用） */
-    int8_t playingTrackIndex;    /* -1 表示未知 */
-    bool   fastForwarding;
-    bool   fastBackwarding;
+    int8_t  playingTrackIndex;   /* -1 表示未知 */
+    bool    fastForwarding;
+    bool    fastBackwarding;
 
-    /* 已播放的总帧数（用于时间显示） */
-    uint32_t readFrameCount;
+    uint32_t readFrameCount;     /* 已播放总帧数 */
 } cdplayer_player_info_t;
 
-/* GUI 直接引用的全局量 */
+/* GUI 直接引用的全局量（在 cdPlayer.c 定义） */
 extern cdplayer_drive_info_t  cdplayer_driveInfo;
 extern cdplayer_player_info_t cdplayer_playerInfo;
 
-/* ========= API（桩实现，便于编译与 UI 验证） ========= */
+/* ========= API（桩/真实实现都可用） ========= */
 hmsf_t cdplay_frameToHmsf(uint32_t frames);
 
 bool cdplay_init(void);
@@ -97,5 +95,10 @@ void cdplay_prev(void);
 
 void cdplay_setVolume(int vol);
 int  cdplay_getVolume(void);
+
+/* ===== 兼容宏（即使旧代码用错拼写也能编过） =====
+   这些只是 token 替换，不改变语义 */
+#define cdtextAvailable cdTextAvailable
+#define cdfextAvailable cdTextAvailable
 
 #endif /* CDPLAYER_H_ */
