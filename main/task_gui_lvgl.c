@@ -76,7 +76,9 @@ void task_lvgl(void *args)
     ESP_LOGI("task_lvgl", "gui_player_init.");
     gui_player_init();
 
-    char str[100];
+    /* —— 把缓冲区从 100 扩到 256，避免格式化输出被编译器判为可能截断 —— */
+    char str[256];
+
     while (1)
     {
         /* 光驱型号 */
