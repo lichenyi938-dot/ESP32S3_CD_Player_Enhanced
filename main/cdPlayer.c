@@ -1,44 +1,99 @@
-/**************  cdPlayer.c includes (覆盖整个头部)  **************/
-#include <stdio.h>
-#include <string.h>
-#include <stdint.h>
-#include <stdbool.h>      // for true/false/bool
-#include "esp_err.h"      // for ESP_OK
-#include "esp_log.h"
-
-/* 你已有的头文件继续保留 */
 #include "cdPlayer.h"
-#include "gui_cdPlayer.h"
+#include "esp_log.h"
+#include <string.h>
 
-/* MSC/USB Host 相关：优先用组件里的声明；没有就用兜底原型 */
-#include "usbhost_driver.h"
+static const char *TAG = "cdplay_stub";
 
-/* 若你的组件里有下面这个头，请保留；如果没有，下面的“兜底原型”会生效 */
-#if __has_include("usbhost_msc_cmd.h")
-#  include "usbhost_msc_cmd.h"
-#endif
+/* ====== 桩状态 ====== */
+static bool s_ready = false;
+static bool s_playing = false;
+static int  s_volume = 50;
 
-/* ---- 兜底原型：防止 msc_* 系列出现“隐式声明”报错 ----
-   如果你的项目里已经有 usbhost_msc_cmd.h，并且这些函数有声明，
-   这些原型会被同名的真实声明覆盖，不会有副作用。 */
-#ifndef MSC_FUNCS_DECLARED
-#define MSC_FUNCS_DECLARED 1
-#ifdef __cplusplus
-extern "C" {
-#endif
-esp_err_t msc_inquiry(void *buf, size_t len);              // INQUIRY
-esp_err_t msc_read_toc(void *toc_hdr_buf, size_t len);     // READ TOC
-/* 如后面还有 msc_test_unit_ready / msc_request_sense / msc_start_stop_unit 等，
-   一并在这里按需补上原型也可：
-// esp_err_t msc_test_unit_ready(void);
-// esp_err_t msc_request_sense(void *buf, size_t len);
-// esp_err_t msc_start_stop_unit(bool start, bool load_eject);
-*/
-#ifdef __cplusplus
+bool cdplay_init(void)
+{
+    ESP_LOGI(TAG, "init (stub)");
+    s_ready = true;      // 标记为就绪，方便上层逻辑继续跑
+    s_playing = false;
+    return true;
 }
-#endif
-#endif /* MSC_FUNCS_DECLARED */
 
-/* 某些版本工具链在开启 -Werror 时，未使用的静态函数会当成错误，这里统一屏蔽 */
-#pragma GCC diagnostic ignored "-Wunused-function"
-/**************  end of cdPlayer.c includes  **************/
+void cdplay_deinit(void)
+{
+    ESP_LOGI(TAG, "deinit (stub)");
+    s_ready = false;
+    s_playing = false;
+}
+
+bool cdplay_devInit(void)
+{
+    ESP_LOGI(TAG, "device init (stub) -> ready");
+    s_ready = true;
+    return s_ready;
+}
+
+bool cdplay_isReady(void)
+{
+    return s_ready;
+}
+
+bool cdplay_isPlaying(void)
+{
+    return s_playing;
+}
+
+void cdplay_play(void)
+{
+    if (!s_ready) return;
+    s_playing = true;
+    ESP_LOGI(TAG, "play (stub)");
+}
+
+void cdplay_stop(void)
+{
+    s_playing = false;
+    ESP_LOGI(TAG, "stop (stub)");
+}
+
+void cdplay_eject(void)
+{
+    s_playing = false;
+    ESP_LOGI(TAG, "eject (stub)");
+}
+
+void cdplay_next(void)
+{
+    ESP_LOGI(TAG, "next (stub)");
+}
+
+void cdplay_prev(void)
+{
+    ESP_LOGI(TAG, "prev (stub)");
+}
+
+void cdplay_setVolume(int vol)
+{
+    if (vol < 0) vol = 0;
+    if (vol > 100) vol = 100;
+    s_volume = vol;
+    ESP_LOGI(TAG, "set volume = %d (stub)", s_volume);
+}
+
+int cdplay_getVolume(void)
+{
+    return s_volume;
+}
+
+/* 红皮书：1 秒 = 75 帧；这里只按 frames 直接换算 */
+hmsf_t cdplay_frameToHmsf(uint32_t frames)
+{
+    hmsf_t t = {0, 0, 0, 0};
+    uint32_t total_seconds = frames / 75;
+    t.frame  = frames % 75;
+
+    t.hour   = total_seconds / 3600;
+    total_seconds %= 3600;
+    t.minute = total_seconds / 60;
+    t.second = total_seconds % 60;
+
+    return t;
+}
