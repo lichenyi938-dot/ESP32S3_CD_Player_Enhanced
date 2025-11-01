@@ -14,30 +14,6 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 
-/* 版本/兼容宏（同时适配 v4.4 与 v5.x） */
-#include "esp_idf_version.h"
-
-/* v4.4: ESP_A2D_AUDIO_STATE_REMOTE_SUSPEND
- * v5.x: ESP_A2D_AUDIO_STATE_SUSPENDED
- */
-#if defined(ESP_A2D_AUDIO_STATE_SUSPENDED)
-  #define A2DP_STATE_PAUSED  ESP_A2D_AUDIO_STATE_SUSPENDED
-#elif defined(ESP_A2D_AUDIO_STATE_REMOTE_SUSPEND)
-  #define A2DP_STATE_PAUSED  ESP_A2D_AUDIO_STATE_REMOTE_SUSPEND
-#else
-  /* 极端 fallback（不应命中），仅为保证编译 */
-  #define A2DP_STATE_PAUSED  2
-#endif
-
-/* v5.x 的 A2DP 配置在 mcc.sbc.*，v4.4 在 mcc.* */
-#if defined(ESP_IDF_VERSION_MAJOR) && (ESP_IDF_VERSION_MAJOR >= 5)
-  #define MCC_CH_MODE(p_)    ((p_)->audio_cfg.mcc.sbc.ch_mode)    /* 或 channel_mode */
-  #define MCC_SAMP_FREQ(p_)  ((p_)->audio_cfg.mcc.sbc.samp_freq)  /* 或 sample_rate  */
-#else
-  #define MCC_CH_MODE(p_)    ((p_)->audio_cfg.mcc.ch_mode)
-  #define MCC_SAMP_FREQ(p_)  ((p_)->audio_cfg.mcc.samp_freq)
-#endif
-
 #include "i2s.h"
 #include "bt_a2dp.h"
 
@@ -46,6 +22,15 @@ static const char *TAG = "bt_a2dp";
 static volatile bool s_bt_streaming = false;
 static uint8_t s_accum_buf[I2S_TX_BUFFER_LEN];
 static size_t  s_accum_len = 0;
+
+/* 某些 IDF 版本用 ESP_A2D_AUDIO_STATE_SUSPENDED，某些用 ESP_A2D_AUDIO_STATE_REMOTE_SUSPEND */
+#if defined(ESP_A2D_AUDIO_STATE_SUSPENDED)
+  #define A2DP_STATE_PAUSED  ESP_A2D_AUDIO_STATE_SUSPENDED
+#elif defined(ESP_A2D_AUDIO_STATE_REMOTE_SUSPEND)
+  #define A2DP_STATE_PAUSED  ESP_A2D_AUDIO_STATE_REMOTE_SUSPEND
+#else
+  #define A2DP_STATE_PAUSED  2
+#endif
 
 static void bt_app_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
 {
@@ -77,12 +62,12 @@ static void bt_app_a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
         }
         break;
 
-    case ESP_A2D_AUDIO_CFG_EVT: {
-        uint8_t ch_mode   = MCC_CH_MODE(param);
-        uint8_t samp_freq = MCC_SAMP_FREQ(param);
-        ESP_LOGI(TAG, "A2DP audio cfg ch:%d, sample_rate:%d", ch_mode, samp_freq);
+    case ESP_A2D_AUDIO_CFG_EVT:
+        /* 不再读取 mcc.{sbc,} 字段，避免不同 IDF 版本差异造成编译失败。
+           固定使用 CD 常用采样率 44.1kHz（如果你的 I2S 初始化已固定则无需额外设置）。
+        */
+        ESP_LOGI(TAG, "A2DP audio cfg received (using fixed 44.1kHz).");
         break;
-    }
 
     default:
         break;
