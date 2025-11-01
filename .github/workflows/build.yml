@@ -1,69 +1,39 @@
-name: Build ESP32S3 Firmware
+name: Build (ESP32S3 / ESP-IDF)
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-  build:
+  idf:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        env:
-          - PLATFORMIO
-          - ESPIDF
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          submodules: recursive
 
-      - name: Install dependencies
+      - name: Setup ESP-IDF
+        uses: espressif/setup-esp-idf@v3
+        with:
+          version: v5.1.2          # 或你工程使用的IDF版本
+          tools-cache: true
+
+      - name: Build
         run: |
-          python -m pip install --upgrade pip
-          pip install platformio
-          pip install esptool
-          sudo apt-get update
-          sudo apt-get install -y ninja-build cmake git wget flex bison gperf python3 python3-pip python3-serial python3-click python3-cryptography python3-future python3-pyparsing python3-setuptools python3-yaml
+          idf.py set-target esp32s3
+          idf.py build
 
-      - name: Build with PlatformIO
-        if: matrix.env == 'PLATFORMIO'
-        run: |
-          if [ -f platformio.ini ]; then
-            echo "Detected PlatformIO project"
-            pio run
-          else
-            echo "PlatformIO not detected, skipping..."
-          fi
-
-      - name: Build with ESP-IDF
-        if: matrix.env == 'ESPIDF'
-        run: |
-          if [ -f CMakeLists.txt ]; then
-            echo "Detected ESP-IDF project"
-            sudo apt-get install -y git wget flex bison gperf python3 python3-pip python3-serial python3-click python3-cryptography python3-future python3-pyparsing python3-setuptools python3-yaml ninja-build ccache
-            python -m pip install --upgrade pip
-            pip install --upgrade esptool
-            mkdir -p build
-            cd build
-            cmake ..
-            make -j$(nproc)
-          else
-            echo "ESP-IDF not detected, skipping..."
-          fi
-
-      - name: Upload Firmware Artifacts
+      - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
-          name: firmware_bins
+          name: esp32s3-firmware
           path: |
-            **/*.bin
-            **/*.elf
-            **/*.map
+            build/bootloader/bootloader.bin
+            build/partition_table/partition-table.bin
+            build/*.bin
+            build/*.elf
+            build/flasher_args.json
