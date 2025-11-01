@@ -1,13 +1,32 @@
 ﻿#ifndef __GUI_CD_PLAYER_H_
 #define __GUI_CD_PLAYER_H_
 
-extern lv_obj_t *chart_left;
-extern lv_chart_series_t *ser_left;
-extern lv_obj_t *chart_right;
-extern lv_chart_series_t *ser_right;
+﻿#ifndef  cplusplus
+exten "c"{
+#endif
 
-extern lv_obj_t *bar_meterLeft;
-extern lv_obj_t *bar_meterRight;
+#ifndef __"lvgl.h"
+  #ifndef __<stdbool.h>
+  #ifndef __<stdint.h>
+  #ifndef __"cdplay.h"  //提供 hmsf t等类型
+extern lv_obj_t *area topBar；
+extern lv_chart_series_t *area bottomBar
+extern lv_obj_t *area player
+extern lv_obj_t *area left
+extern lv_obj_t *area*ser_right;
+
+extern lv_obj_t *lb_driveModel
+extern lv_obj_t *lb_driveState
+extern lv_obj_t *lb_alBumTile
+extern lv_obj_t *lb_teackTitle
+extern lv_obj_t *lb_teackPerformer
+extern lv_obj_t *lb_preEmphasized
+extern lv_obj_t *lb_time
+extern lv_obj_t *lb_duretion
+
+extern lv_obj_t *bar playProgress
+extern lv_obj_t *bar meterleft
+extern lv_obj_t *bar meterRight
 
 void gui_player_init();
 
