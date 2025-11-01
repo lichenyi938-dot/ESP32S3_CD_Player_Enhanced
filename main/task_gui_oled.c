@@ -1,19 +1,15 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <inttypes.h>
 #include <string.h>
-#include "sdkconfig.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-// 如果本文件后续要用到队列/信号量，可按需打开：
+// 如本文件后续需要队列/信号量，再打开下面两行
 // #include "freertos/queue.h"
 // #include "freertos/semphr.h"
 
-#include "esp_chip_info.h"
-#include "esp_flash.h"
-#include "esp_system.h"
 #include "esp_log.h"
-
 #include "main.h"
 #include "iic.h"
 #include "oled.h"
@@ -116,3 +112,25 @@ void task_oled(void *args)
                                (int)now.minute, (int)now.second, (int)now.frame,
                                (int)duration.minute, (int)duration.second, (int)duration.frame);
                 OLED_ShowString(0, 6, str, 0);
+            }
+
+            float progress = 0.0f;
+            if (trackDuration > 0) {
+                progress = ((float)readFrameCount) / ((float)trackDuration);
+                if (progress < 0.0f) progress = 0.0f;
+                if (progress > 1.0f) progress = 1.0f;
+            }
+            OLED_progressBar(7, progress);
+        }
+        else
+        {
+            OLED_ShowString(0, 3, "X_X", 0);
+            (void)snprintf(str, sizeof(str), "%02d:%02d.%02d     %02d:%02d.%02d",
+                           0, 0, 0, 0, 0, 0);
+            OLED_ShowString(0, 6, str, 0);
+            OLED_progressBar(7, 0.0f);
+        }
+
+        OLED_refreshScreen();
+    }
+}
