@@ -10,6 +10,7 @@ on:
 jobs:
   idf:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -17,9 +18,9 @@ jobs:
           submodules: recursive
 
       - name: Setup ESP-IDF
-        uses: espressif/setup-esp-idf@v3
+        uses: espressif/setup-esp-idf@v1   # ← 一定要带 @v1（或 @v3 也行）
         with:
-          version: v5.1.2          # 或你工程使用的IDF版本
+          version: v5.1.2                  # 你的工程用的 IDF 版本
           tools-cache: true
 
       - name: Build
