@@ -1,4 +1,4 @@
-name: Build (ESP32S3 / ESP-IDF)
+name: Build (ESP32S3 via Docker)
 
 on:
   push:
@@ -10,6 +10,7 @@ on:
 jobs:
   idf:
     runs-on: ubuntu-latest
+    container: espressif/idf:release-v5.1    # 官方IDF镜像（自带export.sh）
 
     steps:
       - name: Checkout
@@ -17,14 +18,10 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup ESP-IDF
-        uses: espressif/setup-esp-idf@v1   # ← 一定要带 @v1（或 @v3 也行）
-        with:
-          version: v5.1.2                  # 你的工程用的 IDF 版本
-          tools-cache: true
-
-      - name: Build
+      - name: Build in container
+        shell: bash
         run: |
+          . /opt/esp/idf/export.sh           # 载入IDF环境
           idf.py set-target esp32s3
           idf.py build
 
