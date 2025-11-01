@@ -27,31 +27,22 @@ typedef struct {
     char product[32];
     char revision[8];
 
-    /* 专辑信息 */
+    /* 专辑信息（CD-Text） */
     char albumTitle[64];
     char albumPerformer[64];
 
-    /* CD-Text 可用（统一字段） */
-    bool cdTextAvailable;   /* 标准字段 */
-    bool cdtextAvailable;   /* 兼容旧写法 */
-    bool cdfextAvailable;   /* 常见误拼，兼容 */
+    /* CD-Text 可用（规范字段） */
+    bool cdTextAvailable;
 
     /* 连接/介质状态 */
-    bool isConnected;       /* 已连接 */
-    bool disConnected;      /* 有的代码用相反语义：0 表示已连接 */
+    bool isConnected;     /* 设备已连接 */
+    bool trayClosed;      /* 托盘关闭 */
+    bool discInserted;    /* 已插入光盘 */
+    bool discOK;          /* TOC 正常/可读 */
+    bool discIsCD;        /* 是否音频 CD（非数据盘） */
 
-    bool trayClosed;        /* 托盘是否关闭 */
-
-    bool discInserted;      /* 已插入光盘 */
-    bool discOK;            /* 盘可读/TOC 正常 */
-
-    /* 数据盘标志（有些代码用来区分数据/音频） */
-    bool discISO;           /* 常见拼法 */
-    bool cdscISO;           /* 误拼别名，保持 */
-
-    /* 是否可以播放（两种拼写） */
+    /* 播放就绪 */
     bool readyToPlay;
-    bool readToPlay;
 
     /* 轨道列表 */
     uint8_t  trackCount;
@@ -60,22 +51,20 @@ typedef struct {
 
 /* ========= 播放状态 ========= */
 typedef struct {
-    int  volume;                 /* 0..100 */
-    bool ready;                  /* 设备就绪 */
-    bool playing;                /* 播放中 */
-
-    int8_t  playingTrackIndex;   /* -1 表示未知 */
+    int   volume;               /* 0..100 */
+    bool  ready;                /* 设备就绪 */
+    bool  playing;              /* 播放中 */
+    int8_t  playingTrackIndex;  /* -1 表示未知 */
     bool    fastForwarding;
     bool    fastBackwarding;
-
-    uint32_t readFrameCount;     /* 已播放总帧数 */
+    uint32_t readFrameCount;    /* 已播放总帧数 */
 } cdplayer_player_info_t;
 
 /* 全局量（在 cdPlayer.c 定义） */
 extern cdplayer_drive_info_t  cdplayer_driveInfo;
 extern cdplayer_player_info_t cdplayer_playerInfo;
 
-/* API（桩/真实实现都可用） */
+/* API */
 hmsf_t cdplay_frameToHmsf(uint32_t frames);
 
 bool cdplay_init(void);
@@ -95,12 +84,30 @@ void cdplay_prev(void);
 void cdplay_setVolume(int vol);
 int  cdplay_getVolume(void);
 
-/* ===== 兼容宏：旧代码写错字段名也能编过 ===== */
+/* ===== 兼容宏：旧代码/误拼写也能编过 ===== */
+#ifndef cdTextAvalibale
+#define cdTextAvalibale cdTextAvailable
+#endif
 #ifndef cdtextAvailable
 #define cdtextAvailable cdTextAvailable
 #endif
 #ifndef cdfextAvailable
 #define cdfextAvailable cdTextAvailable
 #endif
+
+#ifndef discISO
+#define discISO discIsCD
+#endif
+#ifndef cdscISO
+#define cdscISO discIsCD
+#endif
+
+#ifndef readToPlay
+#define readToPlay readyToPlay
+#endif
+#ifndef disConnected
+#define disConnected isConnected
+#endif
+/* ====================================== */
 
 #endif /* CDPLAYER_H_ */
