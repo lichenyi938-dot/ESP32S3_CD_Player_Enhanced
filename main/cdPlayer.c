@@ -4,7 +4,7 @@
 
 static const char *TAG = "cdplay_stub";
 
-/* 小工具：安全字符串复制 */
+/* 安全复制 */
 static void safe_set(char *dst, const char *src, size_t cap) {
     if (!dst || cap == 0) return;
     if (!src) { dst[0] = '\0'; return; }
@@ -12,7 +12,7 @@ static void safe_set(char *dst, const char *src, size_t cap) {
     dst[cap - 1] = '\0';
 }
 
-/* ========= GUI 直接读取的全局对象 ========= */
+/* GUI 读取的全局对象 */
 cdplayer_drive_info_t  cdplayer_driveInfo  = {0};
 cdplayer_player_info_t cdplayer_playerInfo = {0};
 
@@ -20,16 +20,20 @@ cdplayer_player_info_t cdplayer_playerInfo = {0};
 static bool s_ready   = false;
 static bool s_playing = false;
 
-/* 保持“等价字段”一致性的辅助函数 */
+/* 同步“别名字段”，保证两边名字都可用 */
 static void sync_drive_flags(void) {
-    /* cdTextAvailable / cdtextAvailable 保持一致 */
-    cdplayer_driveInfo.cdtextAvailable = cdplayer_driveInfo.cdTextAvailable;
+    /* cdTextAvailable 系列 */
+    cdplayer_driveInfo.cdtextAvailable  = cdplayer_driveInfo.cdTextAvailable;
+    cdplayer_driveInfo.cdfextAvailable  = cdplayer_driveInfo.cdTextAvailable;
 
-    /* readyToPlay / readToPlay 保持一致 */
-    cdplayer_driveInfo.readToPlay  = cdplayer_driveInfo.readyToPlay;
+    /* readyToPlay / readToPlay */
+    cdplayer_driveInfo.readToPlay       = cdplayer_driveInfo.readyToPlay;
 
-    /* isConnected / disConnected 互为反义（尽量保持合理） */
-    cdplayer_driveInfo.isConnected = !cdplayer_driveInfo.disConnected;
+    /* 连接状态两个写法 */
+    cdplayer_driveInfo.isConnected      = !cdplayer_driveInfo.disConnected;
+
+    /* discISO 的误拼别名 */
+    cdplayer_driveInfo.cdscISO          = cdplayer_driveInfo.discISO;
 }
 
 bool cdplay_init(void)
@@ -39,10 +43,13 @@ bool cdplay_init(void)
     /* 连接/介质初始状态 */
     cdplayer_driveInfo.disConnected   = false;
     cdplayer_driveInfo.isConnected    = true;
+
+    cdplayer_driveInfo.trayClosed     = true;   /* 默认托盘关闭 */
     cdplayer_driveInfo.discInserted   = true;
     cdplayer_driveInfo.discOK         = true;
     cdplayer_driveInfo.discISO        = false;
     cdplayer_driveInfo.discSC         = false;
+
     cdplayer_driveInfo.readyToPlay    = true;
     cdplayer_driveInfo.cdTextAvailable= true;
 
@@ -52,26 +59,26 @@ bool cdplay_init(void)
     safe_set(cdplayer_driveInfo.albumTitle,     "Demo Album",  sizeof(cdplayer_driveInfo.albumTitle));
     safe_set(cdplayer_driveInfo.albumPerformer, "Demo Artist", sizeof(cdplayer_driveInfo.albumPerformer));
 
-    /* 构造几条示例轨道，方便 UI 联调 */
+    /* 示例轨道，方便 UI 联调 */
     cdplayer_driveInfo.trackCount = 3;
 
     cdplayer_driveInfo.trackList[0].trackNum      = 1;
     cdplayer_driveInfo.trackList[0].preEmphasis   = false;
     safe_set(cdplayer_driveInfo.trackList[0].title,     "Hello, World", sizeof(cdplayer_driveInfo.trackList[0].title));
     safe_set(cdplayer_driveInfo.trackList[0].performer, "ESP-S3",       sizeof(cdplayer_driveInfo.trackList[0].performer));
-    cdplayer_driveInfo.trackList[0].trackDuration = 3 * 60 * 75; /* 3:00 */
+    cdplayer_driveInfo.trackList[0].trackDuration = 3 * 60 * 75;
 
     cdplayer_driveInfo.trackList[1].trackNum      = 2;
     cdplayer_driveInfo.trackList[1].preEmphasis   = false;
     safe_set(cdplayer_driveInfo.trackList[1].title,     "Demo Track",   sizeof(cdplayer_driveInfo.trackList[1].title));
     safe_set(cdplayer_driveInfo.trackList[1].performer, "Stub Artist",  sizeof(cdplayer_driveInfo.trackList[1].performer));
-    cdplayer_driveInfo.trackList[1].trackDuration = 4 * 60 * 75; /* 4:00 */
+    cdplayer_driveInfo.trackList[1].trackDuration = 4 * 60 * 75;
 
     cdplayer_driveInfo.trackList[2].trackNum      = 3;
     cdplayer_driveInfo.trackList[2].preEmphasis   = true;
     safe_set(cdplayer_driveInfo.trackList[2].title,     "Pre-Emph Test", sizeof(cdplayer_driveInfo.trackList[2].title));
     safe_set(cdplayer_driveInfo.trackList[2].performer, "Vintage CD",    sizeof(cdplayer_driveInfo.trackList[2].performer));
-    cdplayer_driveInfo.trackList[2].trackDuration = 2 * 60 * 75 + 30 * 75 / 60; /* 约 2:30 */
+    cdplayer_driveInfo.trackList[2].trackDuration = 2 * 60 * 75 + 30 * 75 / 60;
 
     sync_drive_flags();
 
@@ -83,7 +90,7 @@ bool cdplay_init(void)
     cdplayer_playerInfo.ready             = s_ready;
     cdplayer_playerInfo.playing           = s_playing;
     cdplayer_playerInfo.readFrameCount    = 0;
-    cdplayer_playerInfo.playingTrackIndex = 0;   /* 从第一轨开始 */
+    cdplayer_playerInfo.playingTrackIndex = 0;
     cdplayer_playerInfo.fastForwarding    = false;
     cdplayer_playerInfo.fastBackwarding   = false;
 
@@ -101,6 +108,10 @@ void cdplay_deinit(void)
 
     cdplayer_driveInfo.disConnected = true;
     cdplayer_driveInfo.isConnected  = false;
+    cdplayer_driveInfo.trayClosed   = false;
+    cdplayer_driveInfo.discInserted = false;
+    cdplayer_driveInfo.discOK       = false;
+    cdplayer_driveInfo.readyToPlay  = false;
     sync_drive_flags();
 }
 
@@ -112,6 +123,7 @@ bool cdplay_devInit(void)
 
     cdplayer_driveInfo.disConnected = false;
     cdplayer_driveInfo.isConnected  = true;
+    cdplayer_driveInfo.trayClosed   = true;
     cdplayer_driveInfo.discInserted = true;
     cdplayer_driveInfo.discOK       = true;
     cdplayer_driveInfo.readyToPlay  = true;
@@ -141,7 +153,8 @@ void cdplay_stop(void)
 
 void cdplay_eject(void)
 {
-    /* 模拟弹盘：盘不在，不能播放 */
+    /* 模拟弹盘：托盘打开、盘不在、不可播 */
+    cdplayer_driveInfo.trayClosed   = false;
     cdplayer_driveInfo.discInserted = false;
     cdplayer_driveInfo.discOK       = false;
     cdplayer_driveInfo.readyToPlay  = false;
