@@ -1,54 +1,44 @@
-// ===== put this near the top of cdPlayer.c =====
+/**************  cdPlayer.c includes (覆盖整个头部)  **************/
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdbool.h>      // for true/false/bool
+#include "esp_err.h"      // for ESP_OK
 #include "esp_log.h"
 
-// 声明我们需要用到的 SCSI 命令（工程里已有实现）
-extern esp_err_t msc_inquiry(void *buf, size_t len);
-extern esp_err_t msc_read_toc(void *buf, size_t len);        // READ TOC/PMA/ATIP, Format 0
-extern esp_err_t msc_test_unit_ready(void);
-extern esp_err_t msc_request_sense(uint8_t *buf, size_t len);
+/* 你已有的头文件继续保留 */
+#include "cdPlayer.h"
+#include "gui_cdPlayer.h"
 
-static const char *TAG_CDCHK = "cd_detect";
+/* MSC/USB Host 相关：优先用组件里的声明；没有就用兜底原型 */
+#include "usbhost_driver.h"
 
-// 兼容“桥接误报”的光驱判定：
-// 1) INQUIRY 的 PDT==0x05 直接判定为光驱
-// 2) 否则尝试 READ TOC；成功则也视为光驱
-static bool cd_is_optical_or_probably(void)
-{
-    uint8_t inq[36] = {0};
-    if (msc_inquiry(inq, sizeof(inq)) != ESP_OK) {
-        ESP_LOGW(TAG_CDCHK, "INQUIRY failed, can't decide.");
-        return false;
-    }
-    uint8_t pdt = inq[0] & 0x1F;          // Peripheral Device Type
+/* 若你的组件里有下面这个头，请保留；如果没有，下面的“兜底原型”会生效 */
+#if __has_include("usbhost_msc_cmd.h")
+#  include "usbhost_msc_cmd.h"
+#endif
 
-    if (pdt == 0x05) {                    // CD/DVD
-        ESP_LOGI(TAG_CDCHK, "PDT=0x05 -> optical drive");
-        return true;
-    }
-
-    // 某些桥把 ODD 误报为硬盘 (0x00)。试探 READ TOC：
-    uint8_t toc_hdr[12] = {0};
-    if (msc_read_toc(toc_hdr, sizeof(toc_hdr)) == ESP_OK) {
-        ESP_LOGW(TAG_CDCHK,
-                 "Bridge misreports PDT=0x%02X, READ TOC OK -> treat as optical.", pdt);
-        return true;
-    }
-
-    ESP_LOGI(TAG_CDCHK, "Not optical (PDT=0x%02X) and READ TOC failed.", pdt);
-    return false;
-}
-
-// ===== 在你的设备/光盘监控流程里，把原先“是不是光驱”的判断整段替换为： =====
-// 伪代码示例：在你打印 “Check if usb device is CD/DVD device” 的地方，改成：
-/*
-ESP_LOGI(TAG, "Check if usb device is CD/DVD device...");
-bool is_cd = cd_is_optical_or_probably();
-if (!is_cd) {
-    // 不是/探测失败：仅提示，但不要 return，让下次插拔还能再试
-    ESP_LOGI(TAG, "Not CD/DVD device (or bridge blocked MMC).");
-    // 这里保持原有逻辑：等待拔插/下一轮循环
-} else {
-    // 是光驱：进入原来的就绪等待、READ TOC、播放等流程
-    // 建议：先 test unit ready，不就绪时发 request sense 解锁，之后再读 TOC/启动播放
-}
+/* ---- 兜底原型：防止 msc_* 系列出现“隐式声明”报错 ----
+   如果你的项目里已经有 usbhost_msc_cmd.h，并且这些函数有声明，
+   这些原型会被同名的真实声明覆盖，不会有副作用。 */
+#ifndef MSC_FUNCS_DECLARED
+#define MSC_FUNCS_DECLARED 1
+#ifdef __cplusplus
+extern "C" {
+#endif
+esp_err_t msc_inquiry(void *buf, size_t len);              // INQUIRY
+esp_err_t msc_read_toc(void *toc_hdr_buf, size_t len);     // READ TOC
+/* 如后面还有 msc_test_unit_ready / msc_request_sense / msc_start_stop_unit 等，
+   一并在这里按需补上原型也可：
+// esp_err_t msc_test_unit_ready(void);
+// esp_err_t msc_request_sense(void *buf, size_t len);
+// esp_err_t msc_start_stop_unit(bool start, bool load_eject);
 */
+#ifdef __cplusplus
+}
+#endif
+#endif /* MSC_FUNCS_DECLARED */
+
+/* 某些版本工具链在开启 -Werror 时，未使用的静态函数会当成错误，这里统一屏蔽 */
+#pragma GCC diagnostic ignored "-Wunused-function"
+/**************  end of cdPlayer.c includes  **************/
