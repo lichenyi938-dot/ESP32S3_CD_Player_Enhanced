@@ -16,3 +16,5 @@ CONFIG_I2S_STD_SUPPORT=y
 
 # LVGL minimal defaults (if applicable)
 CONFIG_LVGL_USE_PERF_MONITOR=n
+CONFIG_LV_CONF_SKIP=y
+CONFIG_LV_CONF_PATH="lv_conf.h"
