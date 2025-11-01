@@ -20,8 +20,7 @@ typedef struct {
     uint32_t trackDuration;      /* 时长（帧） */
 } cdplayer_track_info_t;
 
-/* ========= 驱动器/唱片信息 =========
-   兼容不同分支/写法，含“别名字段” */
+/* ========= 驱动器/唱片信息 ========= */
 typedef struct {
     /* 设备字符串 */
     char vendor[16];
@@ -32,12 +31,12 @@ typedef struct {
     char albumTitle[64];
     char albumPerformer[64];
 
-    /* CD-Text 可用（多种写法） */
-    bool cdTextAvailable;   /* 正式字段 */
-    bool cdtextAvailable;   /* 变体：小写 t */
-    bool cdfextAvailable;   /* 常见误拼，做别名 */
+    /* CD-Text 可用（统一字段） */
+    bool cdTextAvailable;   /* 标准字段 */
+    bool cdtextAvailable;   /* 兼容旧写法 */
+    bool cdfextAvailable;   /* 常见误拼，兼容 */
 
-    /* 连接/介质状态（不同分支写法都给） */
+    /* 连接/介质状态 */
     bool isConnected;       /* 已连接 */
     bool disConnected;      /* 有的代码用相反语义：0 表示已连接 */
 
@@ -46,9 +45,9 @@ typedef struct {
     bool discInserted;      /* 已插入光盘 */
     bool discOK;            /* 盘可读/TOC 正常 */
 
-    bool discISO;           /* 数据盘标志（常用拼法） */
-    bool cdscISO;           /* 误拼别名 -> 与 discISO 同步 */
-    bool discSC;            /* 兼容保留位 */
+    /* 数据盘标志（有些代码用来区分数据/音频） */
+    bool discISO;           /* 常见拼法 */
+    bool cdscISO;           /* 误拼别名，保持 */
 
     /* 是否可以播放（两种拼写） */
     bool readyToPlay;
@@ -72,11 +71,11 @@ typedef struct {
     uint32_t readFrameCount;     /* 已播放总帧数 */
 } cdplayer_player_info_t;
 
-/* GUI 直接引用的全局量（在 cdPlayer.c 定义） */
+/* 全局量（在 cdPlayer.c 定义） */
 extern cdplayer_drive_info_t  cdplayer_driveInfo;
 extern cdplayer_player_info_t cdplayer_playerInfo;
 
-/* ========= API（桩/真实实现都可用） ========= */
+/* API（桩/真实实现都可用） */
 hmsf_t cdplay_frameToHmsf(uint32_t frames);
 
 bool cdplay_init(void);
@@ -96,9 +95,12 @@ void cdplay_prev(void);
 void cdplay_setVolume(int vol);
 int  cdplay_getVolume(void);
 
-/* ===== 兼容宏（即使旧代码用错拼写也能编过） =====
-   这些只是 token 替换，不改变语义 */
+/* ===== 兼容宏：旧代码写错字段名也能编过 ===== */
+#ifndef cdtextAvailable
 #define cdtextAvailable cdTextAvailable
+#endif
+#ifndef cdfextAvailable
 #define cdfextAvailable cdTextAvailable
+#endif
 
 #endif /* CDPLAYER_H_ */
