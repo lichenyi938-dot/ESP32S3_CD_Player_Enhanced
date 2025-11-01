@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
@@ -18,6 +19,59 @@
 #include "usbhost_driver.h"
 
 extern SemaphoreHandle_t scsiExeLock;
+
+/* ========= SCSI helpers we call for CD autostart =========
+ * 如果你工程里的函数名不同，把这四个 extern 的名字改成你已有的即可
+ */
+extern esp_err_t msc_prevent_allow_medium_removal(bool prevent);
+extern esp_err_t msc_start_stop_unit(bool start);
+extern esp_err_t msc_test_unit_ready(void);
+extern esp_err_t msc_request_sense(uint8_t *sk, uint8_t *asc, uint8_t *ascq);
+
+/* 自动启动盘片：防弹托盘->启动电机->轮询就绪并打印 SENSE */
+static void usbhost_cd_autostart(void)
+{
+    const char *TAG = "cd_autostart";
+
+    /* 有些驱动一上电会马上 TUR，不先 Prevent+Start 很多托盘会一直“Unit not ready” */
+    if (xSemaphoreTake(scsiExeLock, pdMS_TO_TICKS(2000)) == pdTRUE) {
+        ESP_LOGI(TAG, "Prevent medium removal");
+        (void)msc_prevent_allow_medium_removal(true);
+        vTaskDelay(pdMS_TO_TICKS(50));
+
+        ESP_LOGI(TAG, "Start spindle (START STOP UNIT)");
+        (void)msc_start_stop_unit(true);
+        xSemaphoreGive(scsiExeLock);
+    } else {
+        ESP_LOGW(TAG, "scsiExeLock timeout before start");
+    }
+
+    /* 给电机一点时间爬速，然后轮询 TEST UNIT READY 并打印 sense 码 */
+    vTaskDelay(pdMS_TO_TICKS(800));
+
+    for (int i = 0; i < 30; i++) {   // 约 9s
+        if (xSemaphoreTake(scsiExeLock, pdMS_TO_TICKS(1000)) != pdTRUE) {
+            ESP_LOGW(TAG, "scsiExeLock wait...");
+            vTaskDelay(pdMS_TO_TICKS(300));
+            continue;
+        }
+
+        esp_err_t tur = msc_test_unit_ready();
+        uint8_t sk = 0, asc = 0, ascq = 0;
+        (void)msc_request_sense(&sk, &asc, &ascq);
+        xSemaphoreGive(scsiExeLock);
+
+        if (tur == ESP_OK) {
+            ESP_LOGI(TAG, "Unit is ready");
+            break;
+        } else {
+            ESP_LOGW(TAG, "Not ready yet, sense=%02X/%02X/%02X", sk, asc, ascq);
+        }
+        vTaskDelay(pdMS_TO_TICKS(300));
+    }
+}
+
+/* ======================================================== */
 
 #define CLASS_DRIVER_ACTION_NEW_DEV 0x01
 #define CLASS_DRIVER_ACTION_CLOSE_DEV 0x02
@@ -160,6 +214,9 @@ esp_err_t usbhost_openDevice()
     // give some time to device to start up
     vTaskDelay(pdMS_TO_TICKS(1234));
     usbhost_driverObj.deviceIsOpened = 1;
+
+    /* ---------- 新增：自动启动盘片 ---------- */
+    usbhost_cd_autostart();
 
     return ESP_OK;
 }
@@ -339,8 +396,6 @@ void usbhost_driverInit()
 }
 
 ////
-////
-
 // 传输结束回调
 // transfer complete callback
 void usbhost_cb_transfer(usb_transfer_t *transfer)
@@ -413,12 +468,6 @@ esp_err_t usbhost_controlTransfer(void *data, size_t size)
     xfer->timeout_ms = 5000;
     xfer->device_handle = usbhost_driverObj.handle_device;
 
-    // for (int i = 0; i < 8; i++)
-    // {
-    //     printf("%02x ", xfer->data_buffer[i]);
-    // }
-    // puts("");
-
     // ESP_LOGI("usbhost_controlTransfer", "usb_host_transfer_submit_control");
     ESP_RETURN_ON_ERROR(usb_host_transfer_submit_control(usbhost_driverObj.handle_client, xfer), "usb_host_transfer_submit_control", "");
 
@@ -454,13 +503,11 @@ esp_err_t usbhost_bulkTransfer(void *data, uint32_t *size, usbhost_transDir_t di
     {
         memcpy(xfer->data_buffer, data, *size);
         xfer->bEndpointAddress = usbhost_driverObj.ep_out_num;
-        // printf("out ep: %d\n", xfer->bEndpointAddress);
     }
     else
     {
         // IN endpoint Address bit 7 must be 1
         xfer->bEndpointAddress = usbhost_driverObj.ep_in_num;
-        // printf("in ep: %d\n", xfer->bEndpointAddress);
     }
     xfer->num_bytes = transfer_size;
     xfer->device_handle = usbhost_driverObj.handle_device;
@@ -469,7 +516,6 @@ esp_err_t usbhost_bulkTransfer(void *data, uint32_t *size, usbhost_transDir_t di
     xfer->context = NULL;
 
     // 开始传输
-    // submit
     ESP_RETURN_ON_ERROR(usb_host_transfer_submit(xfer), "usbhost_bulkTransfer", "");
 
     // wait for done
@@ -484,7 +530,6 @@ esp_err_t usbhost_bulkTransfer(void *data, uint32_t *size, usbhost_transDir_t di
     }
 
     // 输出读到的数据
-    // return data
     if (dir == DEV_TO_HOST)
     {
         memcpy(data, xfer->data_buffer, xfer->actual_num_bytes);
