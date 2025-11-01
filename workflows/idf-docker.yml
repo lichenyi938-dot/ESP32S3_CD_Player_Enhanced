@@ -9,12 +9,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: espressif/idf:release-v5.1   # 官方IDF镜像（Docker Hub）
+      image: espressif/idf:release-v4.4.6   # ← 改成 4.4 稳定版
       options: --user 0:0
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -26,8 +25,7 @@ jobs:
           idf.py fullclean
           idf.py build
 
-      - name: Upload firmware
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: esp32s3-firmware
           path: |
