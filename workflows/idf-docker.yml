@@ -2,20 +2,29 @@ name: Build (ESP32S3 via Docker)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: espressif/idf:release-v4.4.6   # ← 改成 4.4 稳定版
+      image: espressif/idf:release-v4.4.6   # 使用 ESP-IDF v4.4.6
       options: --user 0:0
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
+
+      - name: Show IDF version
+        shell: bash
+        run: |
+          . /opt/esp/idf/export.sh
+          idf.py --version
+          git -C "$IDF_PATH" describe --tags --always || true
 
       - name: Build
         shell: bash
@@ -25,7 +34,8 @@ jobs:
           idf.py fullclean
           idf.py build
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
         with:
           name: esp32s3-firmware
           path: |
