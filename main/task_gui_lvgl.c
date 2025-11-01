@@ -80,7 +80,8 @@ void task_lvgl(void *args)
     while (1)
     {
         /* 光驱型号 */
-        sprintf(str, "%s-%s", cdplayer_driveInfo.vendor, cdplayer_driveInfo.product);
+        snprintf(str, sizeof(str), "%s-%s",
+                 cdplayer_driveInfo.vendor, cdplayer_driveInfo.product);
         gui_setDriveModel(str);
 
         /* 碟状态 */
@@ -125,9 +126,9 @@ void task_lvgl(void *args)
             /* 专辑名/表演者（CD-Text） */
             if (cdplayer_driveInfo.cdTextAvailable /* 修正拼写 */)
             {
-                sprintf(str, "%s - %s",
-                        cdplayer_driveInfo.albumTitle,
-                        cdplayer_driveInfo.albumPerformer);
+                snprintf(str, sizeof(str), "%s - %s",
+                         cdplayer_driveInfo.albumTitle,
+                         cdplayer_driveInfo.albumPerformer);
                 gui_setAlbumTitle(str);
             }
             else
@@ -143,7 +144,7 @@ void task_lvgl(void *args)
                 gui_setEmphasis(false);
 
             /* 曲名/表演者（CD-Text），否则显示 TrackXX */
-            if (cdplayer_driveInfo.cdTextAvailable /* 修正拼写 */ &&
+            if (cdplayer_driveInfo.cdTextAvailable &&
                 trackI >= 0 && trackI < cdplayer_driveInfo.trackCount)
             {
                 gui_setTrackTitle(
@@ -152,8 +153,8 @@ void task_lvgl(void *args)
             }
             else
             {
-                sprintf(str, "Track %02d",
-                        (trackI >= 0 ? cdplayer_driveInfo.trackList[trackI].trackNum : 0));
+                snprintf(str, sizeof(str), "Track %02d",
+                         (trackI >= 0 ? cdplayer_driveInfo.trackList[trackI].trackNum : 0));
                 gui_setTrackTitle(str, "");
             }
 
