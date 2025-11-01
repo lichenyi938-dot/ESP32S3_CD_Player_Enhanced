@@ -20,32 +20,37 @@ typedef struct {
     uint32_t trackDuration;      /* 时长（帧） */
 } cdplayer_track_info_t;
 
-/* ========= 驱动器/唱片信息（GUI 会直接读） =========
-   说明：为兼容不同分支里出现过的字段名，这里增加了多个“等价字段”。*/
+/* ========= 驱动器/唱片信息（GUI 直接读） =========
+   兼容旧分支的不同字段名，增加了多个“别名字段”。*/
 typedef struct {
     /* 设备字符串 */
     char vendor[16];
     char product[32];
     char revision[8];
 
-    /* 专辑/表演者（有些 GUI 会直接显示） */
+    /* 专辑信息（GUI 可能直接显示） */
     char albumTitle[64];
     char albumPerformer[64];
 
-    /* CD-Text 可用：同时提供两种写法以兼容旧代码 */
+    /* CD-Text 可用：多种写法 */
     bool cdTextAvailable;   /* 正式字段 */
-    bool cdtextAvailable;   /* 兼容字段（小写 t） */
+    bool cdtextAvailable;   /* 小写 t 变体 */
+    bool cdfextAvailable;   /* 常见误拼，做别名 */
 
-    /* 连接/介质状态（不同分支用过不同写法，一次性都给出） */
+    /* 连接/介质状态（不同分支的写法都给） */
     bool isConnected;       /* 已连接 */
-    bool disConnected;      /* 断开？（某分支用反义词） */
+    bool disConnected;      /* 反义写法（某分支用） */
+
+    bool trayClosed;        /* 托盘是否关闭 */
 
     bool discInserted;      /* 已插入光盘 */
     bool discOK;            /* 盘可读/TOC 正常 */
-    bool discISO;           /* 某分支用作“是数据盘”的标志 */
-    bool discSC;            /* 兼容保留位，不使用也无妨 */
 
-    /* 是否可以播放（两种拼写都给） */
+    bool discISO;           /* 数据盘标志（常用拼法） */
+    bool cdscISO;           /* 误拼别名 -> 与 discISO 同步 */
+    bool discSC;            /* 兼容保留位（不使用也无妨） */
+
+    /* 是否可以播放（两种拼写） */
     bool readyToPlay;
     bool readToPlay;
 
@@ -69,11 +74,11 @@ typedef struct {
     uint32_t readFrameCount;
 } cdplayer_player_info_t;
 
-/* 这两个全局量会被 GUI 直接引用 */
+/* GUI 直接引用的全局量 */
 extern cdplayer_drive_info_t  cdplayer_driveInfo;
 extern cdplayer_player_info_t cdplayer_playerInfo;
 
-/* ========= 工具/控制 API（桩实现，便于编译与 UI 验证） ========= */
+/* ========= API（桩实现，便于编译与 UI 验证） ========= */
 hmsf_t cdplay_frameToHmsf(uint32_t frames);
 
 bool cdplay_init(void);
