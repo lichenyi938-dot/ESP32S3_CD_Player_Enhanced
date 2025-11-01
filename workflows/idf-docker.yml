@@ -3,17 +3,13 @@ name: Build (ESP32S3 via Docker)
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    # 用官方 IDF 容器，包含完整环境；不依赖 setup-esp-idf Action
     container:
-      image: ghcr.io/espressif/esp-idf:release-v5.1
+      image: espressif/idf:release-v5.1   # 官方IDF镜像（Docker Hub）
       options: --user 0:0
 
     steps:
@@ -22,17 +18,12 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Show IDF version
-        shell: bash
-        run: |
-          . /opt/esp/idf/export.sh
-          idf.py --version
-
       - name: Build
         shell: bash
         run: |
           . /opt/esp/idf/export.sh
           idf.py set-target esp32s3
+          idf.py fullclean
           idf.py build
 
       - name: Upload firmware
