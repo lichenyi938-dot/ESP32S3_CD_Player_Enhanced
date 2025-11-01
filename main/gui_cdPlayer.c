@@ -1,4 +1,12 @@
 ﻿#include "lvgl.h"
+#include "lvgl.h"
+
+/* 前向声明需要用到的字体（extern） */
+LV_FONT_DECLARE(lv_font_montserrat_12);
+LV_FONT_DECLARE(lv_font_montserrat_14);
+LV_FONT_DECLARE(lv_font_montserrat_16);
+LV_FONT_DECLARE(lv_font_montserrat_26);
+
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
