@@ -1,5 +1,15 @@
 #ifndef __USBHOST_DRIVER_H_
 #define __USBHOST_DRIVER_H_
+#pragma once
+
+/* 必须先包含 FreeRTOS 相关头，才能使用 SemaphoreHandle_t / QueueHandle_t 等 */
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
+
+/* 你原有的 include 保持不变… */
+
 
 #include "usb/usb_host.h"
 
