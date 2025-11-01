@@ -4,22 +4,33 @@
 
 static const char *TAG = "cdplay_stub";
 
-/* ========== 提供 GUI 直接读取的全局信息（最小可用） ========== */
+/* ========== 提供 GUI 直接读取的全局信息 ========== */
 cdplayer_drive_info_t  cdplayer_driveInfo  = {
-    .vendor   = "UNKNOWN",
-    .product  = "CD/DVD",
-    .revision = "1.0"
+    .vendor  = "ESP",
+    .product = "USB-ODD",
+    .revision= "1.0",
+    .cdTextAvailable = true,
+    .trackCount = 0, /* 启动时由 init 填充 */
 };
 
 cdplayer_player_info_t cdplayer_playerInfo = {
     .volume  = 50,
     .ready   = false,
-    .playing = false
+    .playing = false,
+    .readFrameCount = 0,
 };
 
 /* ========== 内部桩状态 ========== */
 static bool s_ready   = false;
 static bool s_playing = false;
+
+/* 小工具：安全字符串赋值 */
+static void safe_set(char *dst, const char *src, size_t cap) {
+    if (!dst || !cap) return;
+    if (!src) { dst[0] = '\0'; return; }
+    strncpy(dst, src, cap - 1);
+    dst[cap - 1] = '\0';
+}
 
 /* ========== 初始化/反初始化 ========== */
 bool cdplay_init(void)
@@ -28,13 +39,31 @@ bool cdplay_init(void)
     s_ready = true;
     s_playing = false;
 
-    /* 给 GUI 一些可显示的默认文案 */
-    strncpy(cdplayer_driveInfo.vendor,  "ESP", sizeof(cdplayer_driveInfo.vendor)-1);
-    strncpy(cdplayer_driveInfo.product, "USB-ODD", sizeof(cdplayer_driveInfo.product)-1);
-    strncpy(cdplayer_driveInfo.revision,"1.0", sizeof(cdplayer_driveInfo.revision)-1);
+    /* 构造几首“示例曲目”，方便 GUI 正常显示 */
+    cdplayer_driveInfo.trackCount = 3;
+
+    cdplayer_driveInfo.trackList[0].trackNum      = 1;
+    cdplayer_driveInfo.trackList[0].preEmphasis   = false;
+    safe_set(cdplayer_driveInfo.trackList[0].title,     "Hello, World", sizeof(cdplayer_driveInfo.trackList[0].title));
+    safe_set(cdplayer_driveInfo.trackList[0].performer, "ESP-S3",       sizeof(cdplayer_driveInfo.trackList[0].performer));
+    cdplayer_driveInfo.trackList[0].trackDuration = 3 * 60 * 75; /* 3:00 */
+
+    cdplayer_driveInfo.trackList[1].trackNum      = 2;
+    cdplayer_driveInfo.trackList[1].preEmphasis   = false;
+    safe_set(cdplayer_driveInfo.trackList[1].title,     "Demo Track",   sizeof(cdplayer_driveInfo.trackList[1].title));
+    safe_set(cdplayer_driveInfo.trackList[1].performer, "Stub Artist",  sizeof(cdplayer_driveInfo.trackList[1].performer));
+    cdplayer_driveInfo.trackList[1].trackDuration = 4 * 60 * 75; /* 4:00 */
+
+    cdplayer_driveInfo.trackList[2].trackNum      = 3;
+    cdplayer_driveInfo.trackList[2].preEmphasis   = true;
+    safe_set(cdplayer_driveInfo.trackList[2].title,     "Pre-Emph Test", sizeof(cdplayer_driveInfo.trackList[2].title));
+    safe_set(cdplayer_driveInfo.trackList[2].performer, "Vintage CD",    sizeof(cdplayer_driveInfo.trackList[2].performer));
+    cdplayer_driveInfo.trackList[2].trackDuration = 2 * 60 * 75 + 30 * 75 / 60; /* 约 2:30 */
 
     cdplayer_playerInfo.ready   = s_ready;
     cdplayer_playerInfo.playing = s_playing;
+    cdplayer_playerInfo.readFrameCount = 0;
+
     return true;
 }
 
@@ -43,11 +72,11 @@ void cdplay_deinit(void)
     ESP_LOGI(TAG, "deinit (stub)");
     s_ready = false;
     s_playing = false;
-    cdplayer_playerInfo.ready   = s_ready;
-    cdplayer_playerInfo.playing = s_playing;
+    cdplayer_playerInfo.ready   = false;
+    cdplayer_playerInfo.playing = false;
 }
 
-/* 设备初始化（真实项目里可做 SCSI/ATAPI/USB 初始化） */
+/* 设备初始化（真实项目里可做 USB/SCSI 初始化） */
 bool cdplay_devInit(void)
 {
     ESP_LOGI(TAG, "device init (stub) -> ready");
@@ -94,16 +123,16 @@ int cdplay_getVolume(void)
     return cdplayer_playerInfo.volume;
 }
 
-/* ========== 工具函数：帧 -> H:M:S:F（75fps） ========== */
+/* ========== 工具：帧 -> H:M:S:F（75fps） ========== */
 hmsf_t cdplay_frameToHmsf(uint32_t frames)
 {
     hmsf_t t = {0, 0, 0, 0};
-    uint32_t total_seconds = frames / 75;
-    t.frame  = frames % 75;
+    uint32_t total_seconds = frames / 75U;
+    t.frame  = frames % 75U;
 
-    t.hour   = total_seconds / 3600;
-    total_seconds %= 3600;
-    t.minute = total_seconds / 60;
-    t.second = total_seconds % 60;
+    t.hour   = total_seconds / 3600U;
+    total_seconds %= 3600U;
+    t.minute = total_seconds / 60U;
+    t.second = total_seconds % 60U;
     return t;
 }
