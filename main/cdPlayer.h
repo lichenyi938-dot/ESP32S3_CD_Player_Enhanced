@@ -4,34 +4,47 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* ================== 对外可见的数据结构（被 GUI 直接读取） ================== */
+/* ================== 轨道信息 ================== */
+#define CDPLAYER_MAX_TRACKS 99   /* 红皮书最多 99 轨 */
+
 typedef struct {
-    char vendor[16];     // 厂商，如 "HL-DT-ST"
-    char product[32];    // 型号，如 "DVDRAM GT50N"
-    char revision[8];    // 固件版本，可选
+    uint8_t  trackNum;         /* 1..99 */
+    bool     preEmphasis;      /* 预加重标识 */
+    char     title[64];        /* CD-Text：曲名 */
+    char     performer[64];    /* CD-Text：表演者 */
+    uint32_t trackDuration;    /* 该轨时长（单位：frame，75fps） */
+} cdplayer_track_info_t;
+
+/* ================== 驱动器/唱片信息（GUI 直接读取） ================== */
+typedef struct {
+    char vendor[16];           /* 厂商，如 "HL-DT-ST" */
+    char product[32];          /* 型号，如 "DVDRAM GT50N" */
+    char revision[8];          /* 固件版本 */
+    bool     cdTextAvailable;  /* 是否有 CD-Text */
+    uint8_t  trackCount;       /* 轨道总数 */
+    cdplayer_track_info_t trackList[CDPLAYER_MAX_TRACKS];  /* 轨道列表 */
 } cdplayer_drive_info_t;
 
+/* ================== 播放状态（GUI 直接读取） ================== */
 typedef struct {
-    int  volume;         // 0..100
-    bool ready;          // 设备是否就绪
-    bool playing;        // 是否播放中
+    int  volume;               /* 0..100 */
+    bool ready;                /* 设备就绪 */
+    bool playing;              /* 是否播放中 */
+    uint32_t readFrameCount;   /* 当前已播放帧数（75fps） */
 } cdplayer_player_info_t;
 
-/* 这两个全局变量是 GUI 直接引用的 */
+/* 这两个全局量被 GUI 直接引用 */
 extern cdplayer_drive_info_t  cdplayer_driveInfo;
 extern cdplayer_player_info_t cdplayer_playerInfo;
 
-/* ================== 时间结构 & 工具函数 ================== */
+/* ================== 时间结构 & 工具 ================== */
 typedef struct {
-    uint8_t hour;
-    uint8_t minute;
-    uint8_t second;
-    uint8_t frame;   // 0..74（红皮书 75fps）
+    uint8_t hour, minute, second, frame; /* 0..74 */
 } hmsf_t;
 
 hmsf_t cdplay_frameToHmsf(uint32_t frames);
 
-/* ================== 播放控制桩接口（后续可填入真实逻辑） ================== */
+/* ================== 播放控制桩接口 ================== */
 bool cdplay_init(void);
 void cdplay_deinit(void);
 
