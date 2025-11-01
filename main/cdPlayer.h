@@ -4,37 +4,49 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* CD 帧时间结构：时:分:秒:帧（75帧 = 1秒） */
+/* ================== 对外可见的数据结构（被 GUI 直接读取） ================== */
+typedef struct {
+    char vendor[16];     // 厂商，如 "HL-DT-ST"
+    char product[32];    // 型号，如 "DVDRAM GT50N"
+    char revision[8];    // 固件版本，可选
+} cdplayer_drive_info_t;
+
+typedef struct {
+    int  volume;         // 0..100
+    bool ready;          // 设备是否就绪
+    bool playing;        // 是否播放中
+} cdplayer_player_info_t;
+
+/* 这两个全局变量是 GUI 直接引用的 */
+extern cdplayer_drive_info_t  cdplayer_driveInfo;
+extern cdplayer_player_info_t cdplayer_playerInfo;
+
+/* ================== 时间结构 & 工具函数 ================== */
 typedef struct {
     uint8_t hour;
     uint8_t minute;
     uint8_t second;
-    uint8_t frame;   // 0..74
+    uint8_t frame;   // 0..74（红皮书 75fps）
 } hmsf_t;
 
-/* ===== 基础控制接口（桩实现，能编过能跑） ===== */
+hmsf_t cdplay_frameToHmsf(uint32_t frames);
+
+/* ================== 播放控制桩接口（后续可填入真实逻辑） ================== */
 bool cdplay_init(void);
 void cdplay_deinit(void);
 
-/* 设备初始化（比如光驱/USB等），返回是否就绪 */
 bool cdplay_devInit(void);
 
-/* 状态查询 */
 bool cdplay_isReady(void);
 bool cdplay_isPlaying(void);
 
-/* 播放控制 */
 void cdplay_play(void);
 void cdplay_stop(void);
 void cdplay_eject(void);
 void cdplay_next(void);
 void cdplay_prev(void);
 
-/* 音量控制（0~100） */
 void cdplay_setVolume(int vol);
 int  cdplay_getVolume(void);
-
-/* 帧数转 H:M:S:F（按红皮书 75fps） */
-hmsf_t cdplay_frameToHmsf(uint32_t frames);
 
 #endif /* CDPLAYER_H_ */
