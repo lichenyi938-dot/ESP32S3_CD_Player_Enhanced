@@ -1,56 +1,40 @@
-#ifndef __CD_PLAYER_H_
-#define __CD_PLAYER_H_
+#ifndef CDPLAYER_H_
+#define CDPLAYER_H_
 
-typedef struct
-{
-    uint8_t trackNum;
-    uint32_t lbaBegin;
-    uint32_t trackDuration;
-    uint8_t preEmphasis;
-    char *title;
-    char *performer;
-} cdplayer_trackInfo_t;
+#include <stdbool.h>
+#include <stdint.h>
 
-typedef struct
-{
-    char vendor[9];
-    char product[17];
-    uint8_t discInserted;
-    uint8_t trayClosed;
-    uint8_t discIsCD;
-    uint8_t trackCount;
-    cdplayer_trackInfo_t trackList[99];
-    uint8_t cdTextAvalibale;
-    uint8_t readyToPlay;
-    char *albumTitle;
-    char *albumPerformer;
-    char *strBuf_titles;     // need to free
-    char *strBuf_performers; // need to free
-} cdplayer_driveInfo_t;
-
-typedef struct cdPlayer
-{
-    int8_t volume;
-    uint8_t playing;
-    uint8_t fastForwarding;
-    uint8_t fastBackwarding;
-    int8_t playingTrackIndex;
-    int32_t readFrameCount;
-
-} cdplayer_playerInfo_t;
-
-typedef struct
-{
+/* CD 帧时间结构：时:分:秒:帧（75帧 = 1秒） */
+typedef struct {
     uint8_t hour;
     uint8_t minute;
     uint8_t second;
-    uint8_t frame;
+    uint8_t frame;   // 0..74
 } hmsf_t;
 
-extern cdplayer_driveInfo_t cdplayer_driveInfo;
-extern cdplayer_playerInfo_t cdplayer_playerInfo;
+/* ===== 基础控制接口（桩实现，能编过能跑） ===== */
+bool cdplay_init(void);
+void cdplay_deinit(void);
 
-void cdplay_init();
-hmsf_t cdplay_frameToHmsf(uint32_t frame);
+/* 设备初始化（比如光驱/USB等），返回是否就绪 */
+bool cdplay_devInit(void);
 
-#endif
+/* 状态查询 */
+bool cdplay_isReady(void);
+bool cdplay_isPlaying(void);
+
+/* 播放控制 */
+void cdplay_play(void);
+void cdplay_stop(void);
+void cdplay_eject(void);
+void cdplay_next(void);
+void cdplay_prev(void);
+
+/* 音量控制（0~100） */
+void cdplay_setVolume(int vol);
+int  cdplay_getVolume(void);
+
+/* 帧数转 H:M:S:F（按红皮书 75fps） */
+hmsf_t cdplay_frameToHmsf(uint32_t frames);
+
+#endif /* CDPLAYER_H_ */
