@@ -1,113 +1,56 @@
-#ifndef CDPLAYER_H_
-#define CDPLAYER_H_
+#ifndef __CD_PLAYER_H_
+#define __CD_PLAYER_H_
 
-#include <stdbool.h>
-#include <stdint.h>
+typedef struct
+{
+    uint8_t trackNum;
+    uint32_t lbaBegin;
+    uint32_t trackDuration;
+    uint8_t preEmphasis;
+    char *title;
+    char *performer;
+} cdplayer_trackInfo_t;
 
-/* 75 帧 = 1 秒 */
-typedef struct {
-    uint8_t hour, minute, second, frame;
+typedef struct
+{
+    char vendor[9];
+    char product[17];
+    uint8_t discInserted;
+    uint8_t trayClosed;
+    uint8_t discIsCD;
+    uint8_t trackCount;
+    cdplayer_trackInfo_t trackList[99];
+    uint8_t cdTextAvalibale;
+    uint8_t readyToPlay;
+    char *albumTitle;
+    char *albumPerformer;
+    char *strBuf_titles;     // need to free
+    char *strBuf_performers; // need to free
+} cdplayer_driveInfo_t;
+
+typedef struct cdPlayer
+{
+    int8_t volume;
+    uint8_t playing;
+    uint8_t fastForwarding;
+    uint8_t fastBackwarding;
+    int8_t playingTrackIndex;
+    int32_t readFrameCount;
+
+} cdplayer_playerInfo_t;
+
+typedef struct
+{
+    uint8_t hour;
+    uint8_t minute;
+    uint8_t second;
+    uint8_t frame;
 } hmsf_t;
 
-/* ========= 轨道信息 ========= */
-#define CDPLAYER_MAX_TRACKS 99
+extern cdplayer_driveInfo_t cdplayer_driveInfo;
+extern cdplayer_playerInfo_t cdplayer_playerInfo;
 
-typedef struct {
-    uint8_t  trackNum;           /* 1..99 */
-    bool     preEmphasis;        /* 预加重 */
-    char     title[64];          /* CD-Text 曲名 */
-    char     performer[64];      /* CD-Text 表演者 */
-    uint32_t trackDuration;      /* 时长（帧） */
-} cdplayer_track_info_t;
+void cdplay_init();
+hmsf_t cdplay_frameToHmsf(uint32_t frame);
 
-/* ========= 驱动器/唱片信息 ========= */
-typedef struct {
-    /* 设备字符串 */
-    char vendor[16];
-    char product[32];
-    char revision[8];
-
-    /* 专辑信息（CD-Text） */
-    char albumTitle[64];
-    char albumPerformer[64];
-
-    /* CD-Text 可用（规范字段） */
-    bool cdTextAvailable;
-
-    /* 连接/介质状态 */
-    bool isConnected;     /* 设备已连接 */
-    bool trayClosed;      /* 托盘关闭 */
-    bool discInserted;    /* 已插入光盘 */
-    bool discOK;          /* TOC 正常/可读 */
-    bool discIsCD;        /* 是否音频 CD（非数据盘） */
-
-    /* 播放就绪 */
-    bool readyToPlay;
-
-    /* 轨道列表 */
-    uint8_t  trackCount;
-    cdplayer_track_info_t trackList[CDPLAYER_MAX_TRACKS];
-} cdplayer_drive_info_t;
-
-/* ========= 播放状态 ========= */
-typedef struct {
-    int   volume;               /* 0..100 */
-    bool  ready;                /* 设备就绪 */
-    bool  playing;              /* 播放中 */
-    int8_t  playingTrackIndex;  /* -1 表示未知 */
-    bool    fastForwarding;
-    bool    fastBackwarding;
-    uint32_t readFrameCount;    /* 已播放总帧数 */
-} cdplayer_player_info_t;
-
-/* 全局量（在 cdPlayer.c 定义） */
-extern cdplayer_drive_info_t  cdplayer_driveInfo;
-extern cdplayer_player_info_t cdplayer_playerInfo;
-
-/* API */
-hmsf_t cdplay_frameToHmsf(uint32_t frames);
-
-bool cdplay_init(void);
-void cdplay_deinit(void);
-
-bool cdplay_devInit(void);
-
-bool cdplay_isReady(void);
-bool cdplay_isPlaying(void);
-
-void cdplay_play(void);
-void cdplay_stop(void);
-void cdplay_eject(void);
-void cdplay_next(void);
-void cdplay_prev(void);
-
-void cdplay_setVolume(int vol);
-int  cdplay_getVolume(void);
-
-/* ===== 兼容宏：旧代码/误拼写也能编过 ===== */
-#ifndef cdTextAvalibale
-#define cdTextAvalibale cdTextAvailable
 #endif
-#ifndef cdtextAvailable
-#define cdtextAvailable cdTextAvailable
-#endif
-#ifndef cdfextAvailable
-#define cdfextAvailable cdTextAvailable
-#endif
-
-#ifndef discISO
-#define discISO discIsCD
-#endif
-#ifndef cdscISO
-#define cdscISO discIsCD
-#endif
-
-#ifndef readToPlay
-#define readToPlay readyToPlay
-#endif
-#ifndef disConnected
-#define disConnected isConnected
-#endif
-/* ====================================== */
-
-#endif /* CDPLAYER_H_ */
